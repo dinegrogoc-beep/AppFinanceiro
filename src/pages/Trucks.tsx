@@ -17,6 +17,8 @@ export default function Trucks() {
   const [ano, setAno] = useState('')
   const [kmAtual, setKmAtual] = useState('')
   const [motoristaId, setMotoristaId] = useState('')
+  const [qtdPosicoesCavalo, setQtdPosicoesCavalo] = useState('10')
+  const [qtdPosicoesCarreta, setQtdPosicoesCarreta] = useState('12')
 
   function driverName(id?: number) {
     return drivers?.find((d) => d.id === id)?.nome
@@ -32,6 +34,8 @@ export default function Trucks() {
       ano: ano ? Number(ano) : undefined,
       kmAtual: Number(kmAtual),
       motoristaId: motoristaId ? Number(motoristaId) : undefined,
+      qtdPosicoesCavalo: Number(qtdPosicoesCavalo) || 10,
+      qtdPosicoesCarreta: Number(qtdPosicoesCarreta) || 12,
       createdAt: todayISO(),
     })
     setPlaca('')
@@ -40,6 +44,8 @@ export default function Trucks() {
     setAno('')
     setKmAtual('')
     setMotoristaId('')
+    setQtdPosicoesCavalo('10')
+    setQtdPosicoesCarreta('12')
     setShowForm(false)
   }
 
@@ -123,6 +129,26 @@ export default function Trucks() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm text-slate-400">Pneus no cavalo</label>
+              <input
+                value={qtdPosicoesCavalo}
+                onChange={(e) => setQtdPosicoesCavalo(e.target.value)}
+                type="number"
+                className="w-full rounded-lg bg-slate-800 px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-slate-400">Pneus na carreta</label>
+              <input
+                value={qtdPosicoesCarreta}
+                onChange={(e) => setQtdPosicoesCarreta(e.target.value)}
+                type="number"
+                className="w-full rounded-lg bg-slate-800 px-3 py-2"
+              />
+            </div>
           </div>
           <button type="submit" className="w-full rounded-lg bg-sky-500 py-2 font-medium text-slate-950">
             Salvar

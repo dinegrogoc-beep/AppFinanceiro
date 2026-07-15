@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, MAINTENANCE_LABELS, MAINTENANCE_DEFAULT_INTERVAL, type MaintenanceType } from '../db'
 import PageHeader from '../components/PageHeader'
 import AlertBadge from '../components/AlertBadge'
-import { computeMaintenanceAlerts } from '../lib/alerts'
+import { computeMaintenanceAlerts, computeTireAlerts } from '../lib/alerts'
 import { formatDate, formatCurrency, todayISO } from '../lib/format'
 
 const MAINTENANCE_TYPES = Object.keys(MAINTENANCE_LABELS) as MaintenanceType[]
@@ -25,17 +25,21 @@ export default function TruckDetail() {
   const [kmAtual, setKmAtual] = useState('')
 
   const [showMaintForm, setShowMaintForm] = useState(false)
-  const [tipo, setTipo] = useState<MaintenanceType>('pneu')
+  const [tipo, setTipo] = useState<MaintenanceType>('oleo')
   const [data, setData] = useState(todayISO())
   const [km, setKm] = useState('')
   const [custo, setCusto] = useState('')
-  const [intervaloKm, setIntervaloKm] = useState(String(MAINTENANCE_DEFAULT_INTERVAL.pneu.km ?? ''))
-  const [intervaloDias, setIntervaloDias] = useState(String(MAINTENANCE_DEFAULT_INTERVAL.pneu.dias ?? ''))
+  const [intervaloKm, setIntervaloKm] = useState(String(MAINTENANCE_DEFAULT_INTERVAL.oleo.km ?? ''))
+  const [intervaloDias, setIntervaloDias] = useState(String(MAINTENANCE_DEFAULT_INTERVAL.oleo.dias ?? ''))
   const [observacao, setObservacao] = useState('')
+
+  const tires = useLiveQuery(() => db.tires.where('truckId').equals(truckId).toArray(), [truckId])
 
   if (!truck) return null
 
   const alerts = records ? computeMaintenanceAlerts(truck, records) : []
+  const tireAlerts = tires ? computeTireAlerts(truck, tires) : []
+  const tiresPrecisandoAtencao = tireAlerts.filter((a) => a.level !== 'ok').length
   const driverName = drivers?.find((d) => d.id === truck.motoristaId)?.nome
 
   async function handleUpdateKm(e: React.FormEvent) {
@@ -128,6 +132,23 @@ export default function TruckDetail() {
             </form>
           )}
         </div>
+
+        <button
+          onClick={() => navigate(`/caminhoes/${truckId}/pneus`)}
+          className="flex w-full items-center justify-between rounded-xl bg-slate-900 p-4 text-left"
+        >
+          <div>
+            <p className="font-medium">🛞 Pneus</p>
+            <p className="text-sm text-slate-400">
+              {tires?.filter((t) => t.status === 'ativo').length ?? 0} pneus ativos
+            </p>
+          </div>
+          {tiresPrecisandoAtencao > 0 ? (
+            <AlertBadge level="atencao" />
+          ) : (
+            <span className="text-slate-500">→</span>
+          )}
+        </button>
 
         <div>
           <h2 className="mb-2 text-sm font-semibold text-slate-400">Alertas de manutenção</h2>

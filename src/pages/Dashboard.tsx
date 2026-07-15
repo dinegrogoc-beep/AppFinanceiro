@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../db'
 import PageHeader from '../components/PageHeader'
 import AlertBadge from '../components/AlertBadge'
-import { computeMaintenanceAlerts } from '../lib/alerts'
+import { computeMaintenanceAlerts, computeTireAlerts } from '../lib/alerts'
 import { formatCurrency } from '../lib/format'
 
 export default function Dashboard() {
   const trucks = useLiveQuery(() => db.trucks.toArray(), [])
   const records = useLiveQuery(() => db.maintenanceRecords.toArray(), [])
+  const tires = useLiveQuery(() => db.tires.toArray(), [])
   const trips = useLiveQuery(() => db.trips.toArray(), [])
   const expenses = useLiveQuery(() => db.expenses.toArray(), [])
   const navigate = useNavigate()
@@ -51,7 +52,19 @@ export default function Dashboard() {
           <div className="space-y-2">
             {trucks?.map((truck) => {
               const alerts = records ? computeMaintenanceAlerts(truck, records) : []
-              const worst = alerts[0]
+              const tireAlerts = tires ? computeTireAlerts(truck, tires) : []
+              const worstMaint = alerts[0]
+              const worstTire = tireAlerts[0]
+              const tiresAtencao = tireAlerts.filter((a) => a.level !== 'ok').length
+
+              const rank = { trocar: 0, atencao: 1, ok: 2 }
+              const worstIsTire =
+                worstTire && (!worstMaint || rank[worstTire.level] <= rank[worstMaint.level])
+              const worst = worstIsTire ? worstTire : worstMaint
+              const worstLabel = worstIsTire
+                ? `Pneu ${worstTire!.tire.identificador || worstTire!.tire.id} (${tiresAtencao} pneu${tiresAtencao > 1 ? 's' : ''} p/ verificar)`
+                : worstMaint?.label
+
               return (
                 <button
                   key={truck.id}
@@ -65,7 +78,7 @@ export default function Dashboard() {
                   {worst && worst.level !== 'ok' ? (
                     <div className="mt-1 flex items-center gap-2">
                       <AlertBadge level={worst.level} />
-                      <span className="text-sm text-slate-400">{worst.label}</span>
+                      <span className="text-sm text-slate-400">{worstLabel}</span>
                     </div>
                   ) : (
                     <p className="mt-1 text-sm text-emerald-400">Manutenção em dia</p>

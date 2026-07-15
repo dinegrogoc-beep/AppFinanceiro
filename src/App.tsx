@@ -3,6 +3,7 @@ import NavBar from './components/NavBar'
 import Dashboard from './pages/Dashboard'
 import Trucks from './pages/Trucks'
 import TruckDetail from './pages/TruckDetail'
+import TruckTires from './pages/TruckTires'
 import Drivers from './pages/Drivers'
 import Trips from './pages/Trips'
 import TripForm from './pages/TripForm'
@@ -16,6 +17,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/caminhoes" element={<Trucks />} />
             <Route path="/caminhoes/:id" element={<TruckDetail />} />
+            <Route path="/caminhoes/:id/pneus" element={<TruckTires />} />
             <Route path="/motoristas" element={<Drivers />} />
             <Route path="/viagens" element={<Trips />} />
             <Route path="/viagens/novo" element={<TripForm />} />

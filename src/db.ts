@@ -1,7 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 
 export type MaintenanceType =
-  | 'pneu'
   | 'oleo'
   | 'filtro_oleo'
   | 'filtro_ar'
@@ -11,7 +10,6 @@ export type MaintenanceType =
   | 'outro'
 
 export const MAINTENANCE_LABELS: Record<MaintenanceType, string> = {
-  pneu: 'Pneu',
   oleo: 'Troca de óleo',
   filtro_oleo: 'Filtro de óleo',
   filtro_ar: 'Filtro de ar',
@@ -23,7 +21,6 @@ export const MAINTENANCE_LABELS: Record<MaintenanceType, string> = {
 
 // Intervalo padrão sugerido (km e dias) por tipo — o usuário pode ajustar em cada registro.
 export const MAINTENANCE_DEFAULT_INTERVAL: Record<MaintenanceType, { km?: number; dias?: number }> = {
-  pneu: { km: 80000, dias: 730 },
   oleo: { km: 10000, dias: 180 },
   filtro_oleo: { km: 10000, dias: 180 },
   filtro_ar: { km: 20000, dias: 365 },
@@ -31,6 +28,46 @@ export const MAINTENANCE_DEFAULT_INTERVAL: Record<MaintenanceType, { km?: number
   borracharia: {},
   lavagem: {},
   outro: {},
+}
+
+export type TireUnit = 'cavalo' | 'carreta'
+
+export const TIRE_UNIT_LABELS: Record<TireUnit, string> = {
+  cavalo: 'Cavalo',
+  carreta: 'Carreta',
+}
+
+export type TireEventType = 'instalacao' | 'rodizio' | 'remocao'
+
+export interface Tire {
+  id?: number
+  truckId: number
+  identificador?: string // nº de fogo / código do pneu
+  marca?: string
+  unidade: TireUnit
+  posicao: number // slot dentro da unidade (1..N)
+  status: 'ativo' | 'removido'
+  dataInstalacao: string // quando entrou em serviço (início de vida)
+  kmInstalacao: number // km do caminhão nesse momento
+  intervaloKm?: number
+  intervaloDias?: number
+  observacao?: string
+  dataRemocao?: string
+  kmRemocao?: number
+}
+
+export interface TireEvent {
+  id?: number
+  tireId: number
+  truckId: number
+  data: string
+  km: number
+  tipo: TireEventType
+  deUnidade?: TireUnit
+  dePosicao?: number
+  paraUnidade?: TireUnit
+  paraPosicao?: number
+  observacao?: string
 }
 
 export type ExpenseCategory =
@@ -79,6 +116,8 @@ export interface Truck {
   ano?: number
   kmAtual: number
   motoristaId?: number
+  qtdPosicoesCavalo: number
+  qtdPosicoesCarreta: number
   createdAt: string
 }
 
@@ -126,6 +165,8 @@ class FrotaDB extends Dexie {
   maintenanceRecords!: EntityTable<MaintenanceRecord, 'id'>
   trips!: EntityTable<Trip, 'id'>
   expenses!: EntityTable<Expense, 'id'>
+  tires!: EntityTable<Tire, 'id'>
+  tireEvents!: EntityTable<TireEvent, 'id'>
 
   constructor() {
     super('frota-control-db')
@@ -136,6 +177,25 @@ class FrotaDB extends Dexie {
       trips: '++id, truckId, motoristaId, dataInicio',
       expenses: '++id, tripId, truckId, categoria, data',
     })
+    this.version(2)
+      .stores({
+        drivers: '++id, nome',
+        trucks: '++id, placa, motoristaId',
+        maintenanceRecords: '++id, truckId, tipo, data',
+        trips: '++id, truckId, motoristaId, dataInicio',
+        expenses: '++id, tripId, truckId, categoria, data',
+        tires: '++id, truckId, unidade, status',
+        tireEvents: '++id, tireId, truckId, data',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('trucks')
+          .toCollection()
+          .modify((truck) => {
+            truck.qtdPosicoesCavalo ??= 10
+            truck.qtdPosicoesCarreta ??= 12
+          }),
+      )
   }
 }
 
