@@ -4,6 +4,7 @@ import { db } from '../db'
 import PageHeader from '../components/PageHeader'
 import AlertBadge from '../components/AlertBadge'
 import { computeMaintenanceAlerts, computeTireAlerts } from '../lib/alerts'
+import { computeFechamento } from '../lib/fechamento'
 import { formatCurrency } from '../lib/format'
 
 export default function Dashboard() {
@@ -12,13 +13,26 @@ export default function Dashboard() {
   const tires = useLiveQuery(() => db.tires.toArray(), [])
   const trips = useLiveQuery(() => db.trips.toArray(), [])
   const expenses = useLiveQuery(() => db.expenses.toArray(), [])
+  const freights = useLiveQuery(() => db.freights.toArray(), [])
+  const abastecimentos = useLiveQuery(() => db.abastecimentos.toArray(), [])
+  const fechamentoLinhas = useLiveQuery(() => db.fechamentoLinhas.toArray(), [])
   const navigate = useNavigate()
 
-  const totalFrete = trips?.reduce((sum, t) => sum + t.freteValor, 0) ?? 0
-  const totalRepasse =
-    trips?.reduce((sum, t) => sum + (t.freteValor * (t.percentualMotorista ?? 0)) / 100, 0) ?? 0
-  const totalDespesas = expenses?.reduce((sum, e) => sum + e.valor, 0) ?? 0
-  const saldoGeral = totalFrete - totalRepasse - totalDespesas
+  const totalFrete = freights?.reduce((sum, f) => sum + f.valor, 0) ?? 0
+  const totalDespesas =
+    (expenses?.reduce((sum, e) => sum + e.valor, 0) ?? 0) +
+    (abastecimentos?.reduce((sum, a) => sum + a.valor, 0) ?? 0)
+  const saldoGeral =
+    trips?.reduce((sum, trip) => {
+      const calc = computeFechamento(
+        trip,
+        freights?.filter((f) => f.tripId === trip.id) ?? [],
+        expenses?.filter((e) => e.tripId === trip.id) ?? [],
+        abastecimentos?.filter((a) => a.tripId === trip.id) ?? [],
+        fechamentoLinhas?.filter((l) => l.tripId === trip.id) ?? [],
+      )
+      return sum + calc.saldoFinal
+    }, 0) ?? 0
 
   return (
     <div>
@@ -26,13 +40,13 @@ export default function Dashboard() {
 
       <div className="space-y-4 p-4">
         <div className="rounded-xl bg-slate-900 p-4">
-          <p className="text-sm text-slate-400">Saldo geral da frota</p>
+          <p className="text-sm text-slate-400">A acertar com motoristas</p>
           <p className={`text-2xl font-semibold ${saldoGeral >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {formatCurrency(saldoGeral)}
           </p>
           <div className="mt-2 flex justify-between text-xs text-slate-500">
             <span>Frete: {formatCurrency(totalFrete)}</span>
-            <span>Despesas: {formatCurrency(totalRepasse + totalDespesas)}</span>
+            <span>Despesas: {formatCurrency(totalDespesas)}</span>
           </div>
         </div>
 

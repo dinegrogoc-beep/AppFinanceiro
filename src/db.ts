@@ -71,7 +71,6 @@ export interface TireEvent {
 }
 
 export type ExpenseCategory =
-  | 'combustivel'
   | 'pedagio'
   | 'carga_descarga'
   | 'pneu'
@@ -82,11 +81,9 @@ export type ExpenseCategory =
   | 'lavagem'
   | 'peca'
   | 'conserto'
-  | 'repasse_motorista'
   | 'outro'
 
 export const EXPENSE_LABELS: Record<ExpenseCategory, string> = {
-  combustivel: 'Combustível',
   pedagio: 'Pedágio',
   carga_descarga: 'Carga/Descarga',
   pneu: 'Pneu',
@@ -97,9 +94,20 @@ export const EXPENSE_LABELS: Record<ExpenseCategory, string> = {
   lavagem: 'Lavagem',
   peca: 'Peça',
   conserto: 'Conserto',
-  repasse_motorista: 'Repasse ao motorista',
   outro: 'Outro',
 }
+
+export type FormaPagamento = 'dinheiro' | 'cartao' | 'boleto' | 'cheque' | 'pix'
+
+export const FORMA_PAGAMENTO_LABELS: Record<FormaPagamento, string> = {
+  dinheiro: 'Dinheiro',
+  cartao: 'Cartão',
+  boleto: 'Boleto',
+  cheque: 'Cheque',
+  pix: 'Pix',
+}
+
+export const PERCENTUAL_COMISSAO_OPCOES = [10, 11, 12, 13, 14, 15]
 
 export interface Driver {
   id?: number
@@ -141,12 +149,17 @@ export interface Trip {
   dataFim?: string
   origem?: string
   destino?: string
-  freteValor: number
-  percentualMotorista?: number
   kmInicial?: number
   kmFinal?: number
   observacao?: string
   createdAt: string
+
+  // Fechamento
+  apelidoFechamento?: string // nome/apelido a exibir no "Saldo de ___"; padrão é o nome do motorista
+  adiantamento?: number
+  percentualComissao?: number
+  valorDiaria?: number
+  numeroDiarias?: number
 }
 
 export interface Expense {
@@ -157,6 +170,35 @@ export interface Expense {
   valor: number
   data: string
   descricao?: string
+  formaPagamento?: FormaPagamento
+}
+
+export interface Freight {
+  id?: number
+  tripId: number
+  descricao: string // ex: "Frete Charque", "Frete Sal"
+  valor: number
+}
+
+export interface Abastecimento {
+  id?: number
+  tripId: number
+  truckId: number
+  data: string
+  posto?: string
+  km: number
+  litros: number
+  valor: number
+}
+
+export type FechamentoTipo = 'receber' | 'adiantado'
+
+export interface FechamentoLinha {
+  id?: number
+  tripId: number
+  descricao: string
+  valor: number
+  tipo: FechamentoTipo
 }
 
 class FrotaDB extends Dexie {
@@ -167,6 +209,9 @@ class FrotaDB extends Dexie {
   expenses!: EntityTable<Expense, 'id'>
   tires!: EntityTable<Tire, 'id'>
   tireEvents!: EntityTable<TireEvent, 'id'>
+  freights!: EntityTable<Freight, 'id'>
+  abastecimentos!: EntityTable<Abastecimento, 'id'>
+  fechamentoLinhas!: EntityTable<FechamentoLinha, 'id'>
 
   constructor() {
     super('frota-control-db')
@@ -196,6 +241,34 @@ class FrotaDB extends Dexie {
             truck.qtdPosicoesCarreta ??= 12
           }),
       )
+    this.version(3)
+      .stores({
+        drivers: '++id, nome',
+        trucks: '++id, placa, motoristaId',
+        maintenanceRecords: '++id, truckId, tipo, data',
+        trips: '++id, truckId, motoristaId, dataInicio',
+        expenses: '++id, tripId, truckId, categoria, data',
+        tires: '++id, truckId, unidade, status',
+        tireEvents: '++id, tireId, truckId, data',
+        freights: '++id, tripId',
+        abastecimentos: '++id, tripId, truckId, data',
+        fechamentoLinhas: '++id, tripId',
+      })
+      .upgrade(async (tx) => {
+        const trips = await tx.table('trips').toCollection().toArray()
+        for (const trip of trips) {
+          if (trip.freteValor) {
+            await tx.table('freights').add({
+              tripId: trip.id,
+              descricao: 'Frete',
+              valor: trip.freteValor,
+            })
+          }
+          await tx.table('trips').update(trip.id, {
+            percentualComissao: trip.percentualMotorista,
+          })
+        }
+      })
   }
 }
 

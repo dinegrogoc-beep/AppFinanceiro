@@ -2,23 +2,20 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../db'
 import PageHeader from '../components/PageHeader'
+import { computeFechamento } from '../lib/fechamento'
 import { formatCurrency, formatDate } from '../lib/format'
 
 export default function Trips() {
   const trips = useLiveQuery(() => db.trips.orderBy('dataInicio').reverse().toArray(), [])
   const trucks = useLiveQuery(() => db.trucks.toArray(), [])
   const expenses = useLiveQuery(() => db.expenses.toArray(), [])
+  const freights = useLiveQuery(() => db.freights.toArray(), [])
+  const abastecimentos = useLiveQuery(() => db.abastecimentos.toArray(), [])
+  const fechamentoLinhas = useLiveQuery(() => db.fechamentoLinhas.toArray(), [])
   const navigate = useNavigate()
 
   function truckPlaca(id: number) {
     return trucks?.find((t) => t.id === id)?.placa ?? '—'
-  }
-
-  function tripBalance(tripId: number, freteValor: number, percentualMotorista?: number) {
-    const tripExpenses = expenses?.filter((e) => e.tripId === tripId) ?? []
-    const totalDespesas = tripExpenses.reduce((sum, e) => sum + e.valor, 0)
-    const repasse = percentualMotorista ? (freteValor * percentualMotorista) / 100 : 0
-    return freteValor - repasse - totalDespesas
   }
 
   return (
@@ -40,7 +37,13 @@ export default function Trips() {
           <p className="mt-8 text-center text-slate-500">Nenhuma viagem registrada ainda.</p>
         )}
         {trips?.map((trip) => {
-          const saldo = tripBalance(trip.id!, trip.freteValor, trip.percentualMotorista)
+          const calc = computeFechamento(
+            trip,
+            freights?.filter((f) => f.tripId === trip.id) ?? [],
+            expenses?.filter((e) => e.tripId === trip.id) ?? [],
+            abastecimentos?.filter((a) => a.tripId === trip.id) ?? [],
+            fechamentoLinhas?.filter((l) => l.tripId === trip.id) ?? [],
+          )
           return (
             <button
               key={trip.id}
@@ -57,9 +60,9 @@ export default function Trips() {
                 </p>
               )}
               <div className="mt-2 flex items-center justify-between">
-                <p className="text-sm text-slate-400">Frete: {formatCurrency(trip.freteValor)}</p>
-                <p className={`font-medium ${saldo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  Saldo: {formatCurrency(saldo)}
+                <p className="text-sm text-slate-400">Frete: {formatCurrency(calc.totalFrete)}</p>
+                <p className={`font-medium ${calc.saldoFinal >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  Saldo {trip.apelidoFechamento ? `de ${trip.apelidoFechamento}` : ''}: {formatCurrency(calc.saldoFinal)}
                 </p>
               </div>
             </button>
