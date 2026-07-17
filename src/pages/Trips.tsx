@@ -37,9 +37,10 @@ export default function Trips() {
           <p className="mt-8 text-center text-slate-500">Nenhuma viagem registrada ainda.</p>
         )}
         {trips?.map((trip) => {
+          const tripFreights = freights?.filter((f) => f.tripId === trip.id) ?? []
           const calc = computeFechamento(
             trip,
-            freights?.filter((f) => f.tripId === trip.id) ?? [],
+            tripFreights,
             expenses?.filter((e) => e.tripId === trip.id) ?? [],
             abastecimentos?.filter((a) => a.tripId === trip.id) ?? [],
             fechamentoLinhas?.filter((l) => l.tripId === trip.id) ?? [],
@@ -54,11 +55,12 @@ export default function Trips() {
                 <p className="font-medium">{truckPlaca(trip.truckId)}</p>
                 <p className="text-sm text-slate-400">{formatDate(trip.dataInicio)}</p>
               </div>
-              {(trip.origem || trip.destino) && (
-                <p className="text-sm text-slate-400">
-                  {trip.origem} {trip.origem && trip.destino ? '→' : ''} {trip.destino}
+              {tripFreights.map((f, i) => (
+                <p key={i} className="text-sm text-slate-400">
+                  {f.origem} → {f.destino}
+                  {f.quantidadeEntregas > 1 ? ` (${f.quantidadeEntregas} entregas)` : ''}
                 </p>
-              )}
+              ))}
               <div className="mt-2 flex items-center justify-between">
                 <p className="text-sm text-slate-400">Frete: {formatCurrency(calc.totalFrete)}</p>
                 <p className={`font-medium ${calc.saldoFinal >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>

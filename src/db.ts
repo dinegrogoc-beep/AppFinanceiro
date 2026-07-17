@@ -147,8 +147,6 @@ export interface Trip {
   motoristaId?: number
   dataInicio: string
   dataFim?: string
-  origem?: string
-  destino?: string
   kmInicial?: number
   kmFinal?: number
   observacao?: string
@@ -176,7 +174,9 @@ export interface Expense {
 export interface Freight {
   id?: number
   tripId: number
-  descricao: string // ex: "Frete Charque", "Frete Sal"
+  origem: string
+  destino: string
+  quantidadeEntregas: number // quantos pontos de descarga no destino, sem precisar listar cada um
   valor: number
 }
 
@@ -268,6 +268,30 @@ class FrotaDB extends Dexie {
             percentualComissao: trip.percentualMotorista,
           })
         }
+      })
+    this.version(4)
+      .stores({
+        drivers: '++id, nome',
+        trucks: '++id, placa, motoristaId',
+        maintenanceRecords: '++id, truckId, tipo, data',
+        trips: '++id, truckId, motoristaId, dataInicio',
+        expenses: '++id, tripId, truckId, categoria, data',
+        tires: '++id, truckId, unidade, status',
+        tireEvents: '++id, tireId, truckId, data',
+        freights: '++id, tripId',
+        abastecimentos: '++id, tripId, truckId, data',
+        fechamentoLinhas: '++id, tripId',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('freights')
+          .toCollection()
+          .modify((freight) => {
+            freight.origem = freight.origem ?? ''
+            freight.destino = freight.destino ?? freight.descricao ?? ''
+            freight.quantidadeEntregas = freight.quantidadeEntregas ?? 1
+            delete freight.descricao
+          })
       })
   }
 }

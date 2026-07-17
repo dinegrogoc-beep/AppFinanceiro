@@ -25,10 +25,12 @@ const FORMAS_PAGAMENTO = Object.keys(FORMA_PAGAMENTO_LABELS) as FormaPagamento[]
 
 interface FreightRow {
   id?: number
-  descricao: string
+  origem: string
+  destino: string
+  quantidadeEntregas: string
   valor: string
 }
-const emptyFreightRow = (): FreightRow => ({ descricao: '', valor: '' })
+const emptyFreightRow = (): FreightRow => ({ origem: '', destino: '', quantidadeEntregas: '1', valor: '' })
 
 interface FuelRow {
   id?: number
@@ -88,8 +90,6 @@ export default function TripForm() {
   const [truckId, setTruckId] = useState('')
   const [dataInicio, setDataInicio] = useState(todayISO())
   const [dataFim, setDataFim] = useState('')
-  const [origem, setOrigem] = useState('')
-  const [destino, setDestino] = useState('')
   const [kmInicial, setKmInicial] = useState('')
   const [kmFinal, setKmFinal] = useState('')
   const [observacao, setObservacao] = useState('')
@@ -121,8 +121,6 @@ export default function TripForm() {
       setTruckId(String(existingTrip.truckId))
       setDataInicio(existingTrip.dataInicio)
       setDataFim(existingTrip.dataFim ?? '')
-      setOrigem(existingTrip.origem ?? '')
-      setDestino(existingTrip.destino ?? '')
       setKmInicial(existingTrip.kmInicial ? String(existingTrip.kmInicial) : '')
       setKmFinal(existingTrip.kmFinal ? String(existingTrip.kmFinal) : '')
       setObservacao(existingTrip.observacao ?? '')
@@ -135,7 +133,13 @@ export default function TripForm() {
 
       setFreightRows(
         existingFreights.length
-          ? existingFreights.map((f) => ({ id: f.id, descricao: f.descricao, valor: String(f.valor) }))
+          ? existingFreights.map((f) => ({
+              id: f.id,
+              origem: f.origem,
+              destino: f.destino,
+              quantidadeEntregas: String(f.quantidadeEntregas),
+              valor: String(f.valor),
+            }))
           : [emptyFreightRow()],
       )
       setFuelRows(
@@ -208,7 +212,9 @@ export default function TripForm() {
   }
   const previewFreights: Freight[] = freightRows.map((r) => ({
     tripId: 0,
-    descricao: r.descricao,
+    origem: r.origem,
+    destino: r.destino,
+    quantidadeEntregas: Number(r.quantidadeEntregas) || 1,
     valor: Number(r.valor) || 0,
   }))
   const previewExpenses: Expense[] = expenseRows.map((r) => ({
@@ -244,8 +250,6 @@ export default function TripForm() {
       motoristaId: truck?.motoristaId,
       dataInicio,
       dataFim: dataFim || undefined,
-      origem: origem.trim() || undefined,
-      destino: destino.trim() || undefined,
       kmInicial: kmInicial ? Number(kmInicial) : undefined,
       kmFinal: kmFinal ? Number(kmFinal) : undefined,
       observacao: observacao.trim() || undefined,
@@ -276,13 +280,19 @@ export default function TripForm() {
   }
 
   async function syncFreights(currentTripId: number) {
-    const valid = freightRows.filter((r) => r.descricao.trim() && Number(r.valor) > 0)
+    const valid = freightRows.filter((r) => r.destino.trim() && Number(r.valor) > 0)
     const keepIds = new Set(valid.filter((r) => r.id).map((r) => r.id))
     if (isEdit && existingFreights) {
       for (const old of existingFreights) if (!keepIds.has(old.id)) await db.freights.delete(old.id!)
     }
     for (const r of valid) {
-      const p = { tripId: currentTripId, descricao: r.descricao.trim(), valor: Number(r.valor) }
+      const p = {
+        tripId: currentTripId,
+        origem: r.origem.trim(),
+        destino: r.destino.trim(),
+        quantidadeEntregas: Number(r.quantidadeEntregas) || 1,
+        valor: Number(r.valor),
+      }
       if (r.id) await db.freights.update(r.id, p)
       else await db.freights.add(p)
     }
@@ -402,25 +412,6 @@ export default function TripForm() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm text-slate-400">Origem</label>
-              <input
-                value={origem}
-                onChange={(e) => setOrigem(e.target.value)}
-                className="w-full rounded-lg bg-slate-800 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-slate-400">Destino</label>
-              <input
-                value={destino}
-                onChange={(e) => setDestino(e.target.value)}
-                className="w-full rounded-lg bg-slate-800 px-3 py-2"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
               <label className="mb-1 block text-sm text-slate-400">Km saída</label>
               <input
                 value={kmInicial}
@@ -454,28 +445,49 @@ export default function TripForm() {
             </button>
           </div>
           {freightRows.map((row, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                value={row.descricao}
-                onChange={(e) => updateFreightRow(index, { descricao: e.target.value })}
-                placeholder="Ex: Frete Charque"
-                className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-sm"
-              />
-              <input
-                value={row.valor}
-                onChange={(e) => updateFreightRow(index, { valor: e.target.value })}
-                type="number"
-                step="0.01"
-                placeholder="0,00"
-                className="w-28 rounded-lg bg-slate-800 px-3 py-2 text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => setFreightRows((rs) => rs.filter((_, i) => i !== index))}
-                className="text-red-400"
-              >
-                ✕
-              </button>
+            <div key={index} className="space-y-2 rounded-lg bg-slate-800 p-3">
+              <div className="flex items-center gap-2">
+                <input
+                  value={row.origem}
+                  onChange={(e) => updateFreightRow(index, { origem: e.target.value })}
+                  placeholder="Origem"
+                  className="flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                />
+                <span className="text-slate-500">→</span>
+                <input
+                  value={row.destino}
+                  onChange={(e) => updateFreightRow(index, { destino: e.target.value })}
+                  placeholder="Destino"
+                  className="flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFreightRows((rs) => rs.filter((_, i) => i !== index))}
+                  className="text-red-400"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-1 items-center gap-2">
+                  <label className="text-xs text-slate-400 whitespace-nowrap">Entregas</label>
+                  <input
+                    value={row.quantidadeEntregas}
+                    onChange={(e) => updateFreightRow(index, { quantidadeEntregas: e.target.value })}
+                    type="number"
+                    min="1"
+                    className="w-16 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <input
+                  value={row.valor}
+                  onChange={(e) => updateFreightRow(index, { valor: e.target.value })}
+                  type="number"
+                  step="0.01"
+                  placeholder="R$ 0,00"
+                  className="w-32 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                />
+              </div>
             </div>
           ))}
           <div className="flex justify-between border-t border-slate-800 pt-2 text-sm">
