@@ -451,14 +451,14 @@ export default function TripForm() {
                   value={row.origem}
                   onChange={(e) => updateFreightRow(index, { origem: e.target.value })}
                   placeholder="Origem"
-                  className="flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                  className="min-w-0 flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
                 />
                 <span className="text-slate-500">→</span>
                 <input
                   value={row.destino}
                   onChange={(e) => updateFreightRow(index, { destino: e.target.value })}
                   placeholder="Destino"
-                  className="flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                  className="min-w-0 flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
                 />
                 <button
                   type="button"
@@ -469,7 +469,7 @@ export default function TripForm() {
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex flex-1 items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   <label className="text-xs text-slate-400 whitespace-nowrap">Entregas</label>
                   <input
                     value={row.quantidadeEntregas}
@@ -521,7 +521,7 @@ export default function TripForm() {
                   value={row.posto}
                   onChange={(e) => updateFuelRow(index, { posto: e.target.value })}
                   placeholder="Posto"
-                  className="flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                  className="min-w-0 flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
                 />
                 <button
                   type="button"
@@ -599,7 +599,7 @@ export default function TripForm() {
                 <select
                   value={row.categoria}
                   onChange={(e) => updateExpenseRow(index, { categoria: e.target.value as ExpenseCategory })}
-                  className="flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                  className="min-w-0 flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
                 >
                   {EXPENSE_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
@@ -639,7 +639,7 @@ export default function TripForm() {
                   value={row.descricao}
                   onChange={(e) => updateExpenseRow(index, { descricao: e.target.value })}
                   placeholder="Descrição (opcional)"
-                  className="flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                  className="min-w-0 flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
                 />
               </div>
             </div>
@@ -757,7 +757,7 @@ export default function TripForm() {
                     value={row.descricao}
                     onChange={(e) => updateLedgerRow(index, { descricao: e.target.value })}
                     placeholder="Ex: Imposto de renda"
-                    className="flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
+                    className="min-w-0 flex-1 rounded-lg bg-slate-700 px-2 py-1.5 text-sm"
                   />
                   <input
                     value={row.valor}
