@@ -11,8 +11,8 @@ import TripForm from './pages/TripForm'
 export default function App() {
   return (
     <HashRouter>
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col bg-slate-950 text-slate-100">
-        <main className="flex-1 overflow-y-auto pb-20">
+      <div className="mx-auto flex min-h-screen max-w-lg flex-col overflow-x-hidden bg-slate-950 text-slate-100">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto pb-20">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/caminhoes" element={<Trucks />} />
